@@ -1,0 +1,41 @@
+package com.lyming.threadlocal;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+
+/**
+ * @ClassName ThreadLocalNormalUsage00
+ * @Description 两个线程打印日期
+ * @Author lyming
+ * @Date 2020/6/11 12:43 上午
+ **/
+public class ThreadLocalNormalUsage00 {
+    public static void main(String[] args) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String date = new ThreadLocalNormalUsage00().date(10);
+                System.out.println(date);
+            }
+        }).start();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                String date = new ThreadLocalNormalUsage00().date(104707);
+                System.out.println(date);
+            }
+        }).start();
+    }
+
+    /**
+     * 秒转换成日期
+     * @param seconds
+     * @return
+     */
+    public String date(int seconds) {
+        //参数的单位是毫秒，从1970.1.1 00:00:00 GMT计时
+        Date date = new Date(1000 * seconds);
+        SimpleDateFormat dateFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+        return dateFormat.format(date);
+    }
+}
