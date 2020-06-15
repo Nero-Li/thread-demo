@@ -456,3 +456,67 @@
     - 锁中尽量不要包含锁,会造成死锁
     - 选择合适的锁类型或者合适的工具类(比如,多读少写就用读写锁,并发量不高就用原子类)
 ----
+# 原子类
+## 什么是原子类
+1. 不可分割,一个操作是不可以中断的,即使多线程情况下也可以保证
+2. 基本都在java.util.concurrent.atomic
+3. 原子类的作用和锁类似 ,是为了保证并发情况下线程安全,不过原子类相比于锁,有一定的优势
+    - 颗粒度更细:原子变量可以把竞争范围缩小到变量级别,这是一般情况下最细颗粒度的情况了
+    - 效率更高:通常来说,原子类的效率会比锁的效率更高,除了`高度竞争`的情况
+## 6类原子类纵览
+1. 开局一张图  
+![6类原子类纵览.png](src/main/resources/课程图片/6类原子类纵览.png)
+## Atomic*基本类型原子类,以AtomicInteger为例
+1. 基于CAS
+2. 常用方法
+    - public final int get():获取当前的值
+    - public final int getAndSet(int newValue):获取当前值,并设置新值
+    - public final int getAndIncrement():获取当前的值,并自增
+    - public final int getAndDecrement():获取当前值并自减
+    - public final int getAndAdd(int delta):获取当前值,并加上预期的值
+    - boolean compareAndSet(int expect,int update)://如果当前的值等于预期值(expect),则以原子的方式将该值设置为输入的值(update)
+    - [AtomicIntegerDemo.java](src/main/java/com/lyming/lock/atomic/AtomicIntegerDemo1.java)
+## Atomic*Array数组类型原子类
+- 代码示例[AtomicArrayDemo.java](src/main/java/com/lyming/lock/atomic/AtomicArrayDemo.java)
+## Atomic*Reference引用类型原子类
+- AtomicReference类的作用和AtomicInteger没有本质区别,AtomicInteger可以让一个整数保证原子性,而AtomicReference可以让一个对象保证原子性,而AtomicReference可以让一个对象保证原子性,当然,AtomicReference的功能明显
+比AtomicInteger强,因为一个对象里可以包含很多属性,用法和AtomicInteger类似
+- 之前的自旋锁就用到了,[SpinLock.java](src/main/java/com/lyming/lock/spinLock/SpinLock.java)
+## 把普通变量升级为原子类:用AtomicIntegerFieldUpdater升级原有变量
+1. 试用场景:偶尔需要一个原子get-set操作
+2. 代码示例[AtomicIntegerFieldUpdaterDemo.java](src/main/java/com/lyming/lock/atomic/AtomicIntegerFieldUpdaterDemo.java)
+3. 注意点
+    - 不支持被static修饰的对象
+    - 变量必须是可见的,所以一般都加volatile
+## Adder累加器(jdk8引入)
+1. 高并发下LongAdder比AtomicLong效率高,不过本质是空间换时间
+2. 竞争激烈的时候,LongAdder把不同线程对应到不同的Cell(内部的一个结构)上去进行修改,降低了冲突的概率,是`多段锁`的理念,提高了并发性
+3. 代码示例[AtomicLongDemo.java](src/main/java/com/lyming/lock/atomic/AtomicLongDemo.java),[LongAdderDemo.java](src/main/java/com/lyming/lock/atomic/LongAdderDemo.java)  
+这里演示多线程情况下AtomicLong的性能,有16个线程对同一个AtomicLong累加,对比性能
+4. AtomicLong由于竞争很激烈,每一次加法,都要flush和refresh,导致消耗资源  
+而LongAdder,每个线程有自己的一个计数器,仅用来在自己的线程内计数,这样就不会和其他线程的计数器干扰
+5. LongAdder带来的改进和原理
+    - LongAdder引入了分段累加的概念,内部有一个base变量和一个Cell[]数组共同参与计数
+    - base变量:竞争不激烈,直接累加到该变量上
+    - Cell[]数组:竞争激烈,各个线程分散累加到自己的槽Cell[i]中,对应的时候是计算了hash值
+6. sum()方法的源码分析
+```
+    public long sum() {
+        Cell[] as = cells; Cell a;
+        long sum = base;
+        if (as != null) {
+            for (int i = 0; i < as.length; ++i) {
+                if ((a = as[i]) != null)
+                    sum += a.value;
+            }
+        }
+        return sum;
+    }
+```
+注意点:没有加锁,可能发生加过的数组的值又发生了变化,所以可能会不是很精确
+7.对比AtomicLong和LongAdder
+    - 在地竞争下,AtomicLong和LongAdder具有相似的特性,但在竞争激烈的情况下,LongAdder的预期吞吐量要高得多,但是更消耗空间
+    - LongAdder适用的场景是统计求和和计数的场景,而且LongAdder基本只提供了add方法,而AtomicLong还提供了cas方法
+## Accumulator累加器(不常用)
+1. Accumulator和Adder非常相似,就是一个通用版本的Adder
+2. 代码示例:[LongAccumulatorDemo.java](src/main/java/com/lyming/lock/atomic/LongAccumulatorDemo.java)
