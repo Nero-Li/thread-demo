@@ -1,4 +1,4 @@
-package com.lyming.lock.immutable;
+package com.lyming.immutable;
 
 import java.util.HashSet;
 import java.util.Set;

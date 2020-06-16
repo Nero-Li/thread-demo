@@ -475,23 +475,23 @@
     - public final int getAndDecrement():获取当前值并自减
     - public final int getAndAdd(int delta):获取当前值,并加上预期的值
     - boolean compareAndSet(int expect,int update)://如果当前的值等于预期值(expect),则以原子的方式将该值设置为输入的值(update)
-    - [AtomicIntegerDemo.java](src/main/java/com/lyming/lock/atomic/AtomicIntegerDemo1.java)
+    - [AtomicIntegerDemo.java](src/main/java/com/lyming/atomic/AtomicIntegerDemo1.java)
 ## Atomic*Array数组类型原子类
-- 代码示例[AtomicArrayDemo.java](src/main/java/com/lyming/lock/atomic/AtomicArrayDemo.java)
+- 代码示例[AtomicArrayDemo.java](src/main/java/com/lyming/atomic/AtomicArrayDemo.java)
 ## Atomic*Reference引用类型原子类
 - AtomicReference类的作用和AtomicInteger没有本质区别,AtomicInteger可以让一个整数保证原子性,而AtomicReference可以让一个对象保证原子性,而AtomicReference可以让一个对象保证原子性,当然,AtomicReference的功能明显
 比AtomicInteger强,因为一个对象里可以包含很多属性,用法和AtomicInteger类似
-- 之前的自旋锁就用到了,[SpinLock.java](src/main/java/com/lyming/lock/spinLock/SpinLock.java)
+- 之前的自旋锁就用到了,[SpinLock.java](src/main/java/com/lyming/atomic/spinLock/SpinLock.java)
 ## 把普通变量升级为原子类:用AtomicIntegerFieldUpdater升级原有变量
 1. 试用场景:偶尔需要一个原子get-set操作
-2. 代码示例[AtomicIntegerFieldUpdaterDemo.java](src/main/java/com/lyming/lock/atomic/AtomicIntegerFieldUpdaterDemo.java)
+2. 代码示例[AtomicIntegerFieldUpdaterDemo.java](src/main/java/com/lyming/atomic/AtomicIntegerFieldUpdaterDemo.java)
 3. 注意点
     - 不支持被static修饰的对象
     - 变量必须是可见的,所以一般都加volatile
 ## Adder累加器(jdk8引入)
 1. 高并发下LongAdder比AtomicLong效率高,不过本质是空间换时间
 2. 竞争激烈的时候,LongAdder把不同线程对应到不同的Cell(内部的一个结构)上去进行修改,降低了冲突的概率,是`多段锁`的理念,提高了并发性
-3. 代码示例[AtomicLongDemo.java](src/main/java/com/lyming/lock/atomic/AtomicLongDemo.java),[LongAdderDemo.java](src/main/java/com/lyming/lock/atomic/LongAdderDemo.java)  
+3. 代码示例[AtomicLongDemo.java](src/main/java/com/lyming/atomic/AtomicLongDemo.java),[LongAdderDemo.java](src/main/java/com/lyming/lock/atomic/LongAdderDemo.java)  
 这里演示多线程情况下AtomicLong的性能,有16个线程对同一个AtomicLong累加,对比性能
 4. AtomicLong由于竞争很激烈,每一次加法,都要flush和refresh,导致消耗资源  
 而LongAdder,每个线程有自己的一个计数器,仅用来在自己的线程内计数,这样就不会和其他线程的计数器干扰
@@ -519,7 +519,7 @@
     - LongAdder适用的场景是统计求和和计数的场景,而且LongAdder基本只提供了add方法,而AtomicLong还提供了cas方法
 ## Accumulator累加器(不常用)
 1. Accumulator和Adder非常相似,就是一个通用版本的Adder
-2. 代码示例:[LongAccumulatorDemo.java](src/main/java/com/lyming/lock/atomic/LongAccumulatorDemo.java)
+2. 代码示例:[LongAccumulatorDemo.java](src/main/java/com/lyming/atomic/LongAccumulatorDemo.java)
 ----
 # 六.CAS原理
 ## 什么是CAS
@@ -529,9 +529,9 @@
 ![CAS1](src/main/resources/课程图片/CAS1.png)
 4. CAS其实也是CPU的特殊指令,由CPU保证其原子性
 5. CAS的等价代码
-[SimulatedCAS.java](src/main/java/com/lyming/lock/cas/SimulatedCAS.java)
+[SimulatedCAS.java](src/main/java/com/lyming/cas/SimulatedCAS.java)
 ## 案例演示
-[TwoThreadsCompetition.java](src/main/java/com/lyming/lock/cas/TwoThreadsCompetition.java)
+[TwoThreadsCompetition.java](src/main/java/com/lyming/cas/TwoThreadsCompetition.java)
 ## 应用场景
 1. 乐观锁
 2. 原子类
@@ -586,10 +586,207 @@
     - 把所有属性都声明为final?`[×]`  
     如果能往下一层一层有一个可变,那么即便声明为final也不是不可变的,比如Person类有三个属性,都是final修饰,但是有一个属性又是一个类,这个类中有可变的属性,那整体Person而言也还是可变的
     - 一个属性是对象类型的不可变对象的正确实现
-        - [ImmutableDemo.java](src/main/java/com/lyming/lock/immutable/ImmutableDemo.java)
+        - [ImmutableDemo.java](src/main/java/com/lyming/immutable/ImmutableDemo.java)
         - 对象创建后,其状态就不能修改
         - 所有属性都是final修饰的
         - 对象创建过程中没有发生溢出
 3. 把变量写在线程内部--栈封闭
     - 在方法中新建的局部变量,实际上是存储在每个线程私有的栈空间,不能被其他线程所访问到,这就是`栈封闭`技术,是`线程封闭`的一种情况
-    - 代码演示[StackConfinement.java](src/main/java/com/lyming/lock/immutable/StackConfinement.java)
+    - 代码演示[StackConfinement.java](src/main/java/com/lyming/immutable/StackConfinement.java)
+----
+# 八.并发容器
+## 并发容器概览
+1. ConcurrentHashMap:线程安全的HashMap
+2. CopyOnWriteArrayList:线程安全的List
+3. BlockingQueue:这是一个接口,表示阻塞队列,非常适用于作为数据共享的通道
+4. ConcurrentLinkedQueue:高效的非阻塞并发队列,使用链表实现,可以看做线程安全的LinkedList
+5. ConcurrentSkipListMap:是一个Map.使用跳跃表的数据结构进行快速查找,用的场景不是很多
+## 集合类的历史--古老和过时的同步容器
+1. Vector和Hashtable
+    - 早起出现,用Synchronize锁住了关键方法,保证了线程安全,但在并发环境下,效率低
+2. ArrayList和HashMap
+    - 线程不安全,因为关键方法没加锁
+    - 虽然这两个类是线程不安全的,但是可以用`Collocations.synchronizedList(new ArrayList<E>())`和
+    `Collections.synchronizedMap(new HashMap<K,V>())`使之变成线程安全,原理是加了同步代码块,实际上和Vector和Hashtabel优化没多少
+3. ConcurrentHashMap和CopyOnWriteArrayList
+    - 取代同步的HashMap和同步的ArrayList
+    - 在绝大多数并发情况下,ConcurrentHashMap和CopyOnWriteArrayList的性能都更好,CopyOnWriteArrayList性能低的唯一例外是集合中的元素经常被修改,
+    因为CopyOnWriteArrayList每一次修改就要重新完整复制整个集合,所以更适合读多写少的场景;而ConcurrentHashMap几乎没有例外,就是更好
+## ConcurrentHashMap(面试常考)
+1. Map简介
+    - HashMap(HashMap中key和value都允许为null。key为null的键值对永远都放在以table[0]为头结点的链表中。)
+    - Hashtable(不推荐使用了,key和value都不允许为null,因为为null在计算hash值的时候直接会抛出NPE)
+    - LinkedHashMap(HashMap的子类,保存了插入的记录顺序,方便遍历)
+    - TreeMap(实现了sorted接口,所以可以根据key排序,默认是升序,可以自定义排序)
+    - ![Map接口1](src/main/resources/课程图片/Map接口1.png)
+    - ![Map接口1](src/main/resources/课程图片/Map接口2.png)
+2. 为什么需要ConcurrentHashMap
+    - 因为用了`Collections.synchronizedMap(new HashMap<K,V>())`,在高并发环境下,也没有多少效率提升
+    - HashMap又是线程不安全的
+    - 为什么HashMap线程不安全
+        - 同时put碰撞导致数据丢失
+        - 同时put扩容导致数据丢失
+        - 死循环造成CPU100%(主要存在JDK1.7及以前版本中):没什么好说的,就是扩容的时候形成循环链表,就是指针你指向我,我指向你,造成死循环,就是用错类了,高并发下就不应该用HashMap
+3. HashMap分析,尤其是JDK1.8
+    - JDK1.7:拉链法
+        - ![HashMap分析1](src/main/resources/课程图片/HashMap分析&#32;1.7_1.png)
+        - ![HashMap分析2](src/main/resources/课程图片/HashMap分析&#32;1.7_2.png)
+    - JDK8:除了拉链法,出现了红黑树
+        - ![Java 8 HashMap结构](src/main/resources/课程图片/Java 8 HashMap结构.png)
+        - 红黑树是对二叉查找树的一种平衡策略,O(logN)VSO(N);会自动平衡,防止极端不平衡从而影响查找效率
+        - ![红黑树](src/main/resources/课程图片/红黑树.png)
+    - 红黑树
+        - 每个节点要么是红色要么是黑色,根节点永远是黑色
+        - 红色节点不能连续(即红色节点的孩子和父亲不能是红色)
+        - 从任一节点到其子树中的叶子节点的路径都包含相同数量的黑色节点
+        - 所有的叶子节点都是黑色的
+    - HashMap关于并发的特点
+        - 非线程安全
+        - 迭代的时候不允许修改内容
+        - 只读是并发安全的
+        - 如果一定要把HashMap用在并发环境,用Collections.SynchronizedMap(new HashMap())
+4. JDK1.7中ConcurrentHashMap实现和分析
+    - JDK1.7的ConcurrentHashMap 
+    ![JDK1.7的ConcurrentHashMap1](src/main/resources/课程图片/JDK1.7的ConcurrentHashMap实现和分析&#32;1.png)
+    ![JDK1.7的ConcurrentHashMap2](src/main/resources/课程图片/JDK1.7的ConcurrentHashMap实现和分析&#32;2.png)
+    - JDK1.7中的ConcurrentHashMap最外层是多个`segment`,每个segment的底层数据结构与`HashMap`类似,仍然是数组和链表组成的拉链法
+    - 每个segment独立上`ReentrantLock`,每个segment之间互不影响,提高了并发效率
+    - ConcurrentHashMap默认有16个segment,所以最多同时支持16个线程并发`写`(操作分别分布在不同的segment上),这个默认值可以在初始化的时候设置为其他值,
+    但是一旦初始化以后,是`不可以扩容的`.
+5. JDK8中ConcurrentHashMap实现和分析
+    - 与JDK1.7相比,完全重写,源码从1000+到6000+
+    - JDK8的ConcurrentHashMap
+    ![Java 8 ConcurrentHashMap结构](src/main/resources/课程图片/JDK1.8的ConcurrentHashMap实现和分析&#32;1.png)
+    - 源码分析
+        - public V put(K key, V value) :  
+        实际调用了`final V putVal(K key, V value, boolean onlyIfAbsent)`  
+        ```
+          public V put(K key, V value) {
+              return putVal(key, value, false);
+          }
+        ```  
+      
+      在putVal()中  
+      ```
+        if (key == null || value == null) throw new NullPointerException();//key和value均不能为null,否则抛出NPE
+                int hash = spread(key.hashCode());//计算Hash值
+                int binCount = 0;
+                //在整个for循环中完成了插入工作
+                for (Node<K,V>[] tab = table;;) {
+                    Node<K,V> f; int n, i, fh;
+                    if (tab == null || (n = tab.length) == 0)//判断tab是否为空或者没有值,tab就是一个node节点
+                        tab = initTable();//初始化tab
+                    else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {//如果已经初始化过了,而且计算出来的hash节点没有被占用
+                        if (casTabAt(tab, i, null,//就用cas操作放进去,是利用Unsafe的操作
+                                     new Node<K,V>(hash, key, value, null)))
+                            break;//成功放进去,就退出for循环
+                    }
+                    else if ((fh = f.hash) == MOVED)//MOVED是转义节点,表示当前槽点正在扩容
+                        tab = helpTransfer(tab, f);//如果计算出来的hash对应的槽点为MOVED,就去帮助扩容和转移
+                    else {//如果计算出来的槽点有值就会进入下面的代码
+                        V oldVal = null;
+                        synchronized (f) {//加锁
+                            if (tabAt(tab, i) == f) {
+                                if (fh >= 0) {
+                                    binCount = 1;
+                                    //for循环是进行链表的操作,根据hash值找到对应的位置
+                                    for (Node<K,V> e = f;; ++binCount) {
+                                        K ek;
+                                        //如果链表的位置上有值
+                                        if (e.hash == hash &&
+                                            ((ek = e.key) == key ||
+                                             (ek != null && key.equals(ek)))) {
+                                            oldVal = e.val;//把原来的值赋值给oldVal
+                                            if (!onlyIfAbsent)
+                                                e.val = value;
+                                            break;
+                                        }
+                                        //跳过if,说明不存在这个key,创建一个新节点,并放在链表最后
+                                        Node<K,V> pred = e;
+                                        if ((e = e.next) == null) {
+                                            pred.next = new Node<K,V>(hash, key,
+                                                                      value, null);
+                                            break;
+                                        }
+                                    }
+                                }
+                                //走到这里说明是一个红黑树
+                                else if (f instanceof TreeBin) {
+                                    Node<K,V> p;
+                                    binCount = 2;
+                                    //把值放到树中去
+                                    if ((p = ((TreeBin<K,V>)f).putTreeVal(hash, key,
+                                                                   value)) != null) {
+                                        oldVal = p.val;//同样返回之前的值
+                                        if (!onlyIfAbsent)
+                                            p.val = value;
+                                    }
+                                }
+                            }
+                        }
+                        //完成添加工作,在这里是要判断是否需要转成红黑树
+                        if (binCount != 0) {
+                            if (binCount >= TREEIFY_THRESHOLD)//TREEIFY_THRESHOLD=8
+                                treeifyBin(tab, i);//开始转成红黑树,除了上面大于8的条件,这个方法里还有一个容量要不小于64的条件
+                            if (oldVal != null)
+                                return oldVal;
+                            break;
+                        }
+                    }
+                }
+                addCount(1L, binCount);
+                return null;
+      ```
+      
+         - public V get(Object key):  
+        ```
+            public V get(Object key) {
+                Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
+                int h = spread(key.hashCode());//计算hash值
+                if ((tab = table) != null && (n = tab.length) > 0 &&//tab不能为null且长度要大于0
+                    (e = tabAt(tab, (n - 1) & h)) != null) {
+                    if ((eh = e.hash) == h) {
+                        if ((ek = e.key) == key || (ek != null && key.equals(ek)))//槽点的hash值符合,key符合,说明找到了value
+                            return e.val;
+                    }
+                    else if (eh < 0)//如果hash值为负数,说明是红黑树节点或者是转义节点
+                        return (p = e.find(h, key)) != null ? p.val : null;
+                    while ((e = e.next) != null) {//如果上面都不是,就说明是链表
+                        if (e.hash == h &&
+                            ((ek = e.key) == key || (ek != null && key.equals(ek))))
+                            return e.val;
+                    }
+                }
+                return null;//tab不能为null且长度要大于0,否则直接返回null,容器还没初始化完毕
+            }
+        ```
+    - 文字描述
+        - public V put(K key, V value) :
+            - 判断key,value不为null
+            - 计算hash值
+            - 根据对应位置节点的类型来赋值,或者helpTransfer(),或者增长链表,或者给红黑树增加节点
+            - 满足阈值就转变成红黑树
+            - 返回oldVal
+        - public V get(Object key):
+            - 计算hash值
+            - 找到对应的位置,根据情况进行:
+            - 直接取值
+            - 红黑树里取值
+            - 遍历链表取值
+            - 返回找到的value
+            
+6. 对比JDK1.7和JDK8的优缺点,为什么要升级成JDK8中的那样
+    - 数据结构:从1.7中默认16个segment变成每个node都独立,提高并发度
+    - Hash碰撞:1.7中如果发生hash碰撞采取拉链法,java8中先是拉链法,大于8后变成红黑树
+    - 并发安全:1.7中才用分段锁,利用Segment保证线程安全,而Segment继承于ReentrantLock;java8中是CAS+Synchronize
+    - 查询复杂度:链表查询的时间复杂度为O(N),而如果转换成红黑树,就从O(N)降低为O(longN)
+    - 为什么选择8转换成红黑树呢?
+        - 源码的注释提供了参考,其实正常情况下链表长度是不会超过8的,注释中列举了泊松分布的概率,链表长度为8的概率已经低到0.00000006了,所以其实转换成红黑树是一种极端情况
+        - 在数据量不多的时候,小于8的时候,红黑树并不划算,因为红黑树每个节点占用的空间是链表节点的两倍
+7. 组合操作:ConcurrentHashMap也不是线程安全的?
+    - 错误的使用会造成ConcurrentHashMap不是线程安全的
+    - 代码示例:[组合操作并不保证线程安全](src/main/java/com/lyming/collections/concurrenthashmap/OptionsNotSafe.java)
+## CopyOnWriteArrayList
+## 并发队列Queue(阻塞队列,非阻塞队列)
+## 
+## 

@@ -1,4 +1,4 @@
-package com.lyming.lock.cas;
+package com.lyming.cas;
 
 /**
  * @ClassName TwoThreadsCompetition

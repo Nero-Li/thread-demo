@@ -1,4 +1,4 @@
-package com.lyming.lock.spinLock;
+package com.lyming.atomic.spinLock;
 
 import java.util.concurrent.atomic.AtomicReference;
 

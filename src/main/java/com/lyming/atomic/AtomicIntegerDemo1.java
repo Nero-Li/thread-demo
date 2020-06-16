@@ -1,4 +1,4 @@
-package com.lyming.lock.atomic;
+package com.lyming.atomic;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
