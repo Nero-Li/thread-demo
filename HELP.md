@@ -4,7 +4,7 @@
 1. 互斥同步
 - 各种互斥同步锁
     - synchronized
-    - ReentryLock
+    - ReentrantLock
     - ReadWriteLock
     - ...
 - 同步工具类
@@ -37,7 +37,7 @@
             
 3. 结合互斥和非互斥同步
     - 并发容器
-        - ConcurrentHashMao(结合CAS和Synchronize)
+        - ConcurrentHashMap(结合CAS和Synchronize)
         - CopyOnWriteArraylist
         - 并发队列
             - 阻塞队列(和线程池关系紧密)
@@ -456,7 +456,7 @@
     - 锁中尽量不要包含锁,会造成死锁
     - 选择合适的锁类型或者合适的工具类(比如,多读少写就用读写锁,并发量不高就用原子类)
 ----
-# 原子类
+# 五.原子类
 ## 什么是原子类
 1. 不可分割,一个操作是不可以中断的,即使多线程情况下也可以保证
 2. 基本都在java.util.concurrent.atomic
@@ -520,3 +520,76 @@
 ## Accumulator累加器(不常用)
 1. Accumulator和Adder非常相似,就是一个通用版本的Adder
 2. 代码示例:[LongAccumulatorDemo.java](src/main/java/com/lyming/lock/atomic/LongAccumulatorDemo.java)
+----
+# 六.CAS原理
+## 什么是CAS
+1. CAS==>CompareAndSwap是一种思想也是CPU的一条指令,主要用在并发编程领域
+2. 思路:我认为V的值应该是A,如果是的话,我就改成B,如果不是A(说明计算过程中被别人修改了),那我就不修改了,避免多人同时修改导致出错
+3. CAS有三个操作数:内存值V,预期值A,要修改的值B  
+![CAS1](src/main/resources/课程图片/CAS1.png)
+4. CAS其实也是CPU的特殊指令,由CPU保证其原子性
+5. CAS的等价代码
+[SimulatedCAS.java](src/main/java/com/lyming/lock/cas/SimulatedCAS.java)
+## 案例演示
+[TwoThreadsCompetition.java](src/main/java/com/lyming/lock/cas/TwoThreadsCompetition.java)
+## 应用场景
+1. 乐观锁
+2. 原子类
+3. 并发容器(比如ConcurrentHashMap)
+## 以AtomicInteger为例,分析java是如何利用CAS实现原子操作
+1. AtomicInteger加载`Unsafe`工具,用来直接操作内存数据
+2. 用Unsafe来实现底层操作
+3. 用volatile修饰value字段,保证可见性
+4. Unsafe类
+    - Unsafe是CAS的核心类,java无法直接访问底层操作系统,而是通过本地(native)方法来访问,不过尽管如此,JVM还是开了一个后门,JDK中有一个Unsafe类,它提供了硬件级别的原子操作
+    - valueOffset表示的是变量值在内存中的偏移地址,因为Unsafe就是根据内存偏移地址获取数据的原值,这就就能通过Unsafe来实现CAS了
+## 缺点
+1. ABA问题==>加版本号解决
+2. 自旋时间过长:自旋一般都是whle死循环,在竞争激烈的情况下很消耗CPU资源
+----
+# 七.final关键字和不变性
+## 什么是不变性(Immutable)
+1. 如果对象在被创建后,状态就不能被修改,那么它就不可变
+2. 具有不可变性的对象一定是线程安全的,不需要对其采取任何额外的保护措施,也能保证线程安全
+## final的作用
+1. 早期
+    - 锁定
+    - 效率:早期的java实现版本,会将final方法转换为内嵌方法,提高性能
+2. 现在
+    - 类防止被继承,方法防止被重写,变量防止被修改
+    - 天生是线程安全的,而不需要额外的同步开销
+## 3种用法:修饰变量,方法,类
+1. final修饰变量
+    - 含义:被final修饰的变量,意味着值不能被修改,如果变量是对象,那么对象的引用不能变,但是对象自身的内容依然可以变化
+    - final instance variable(类中的final属性)
+        - 第一种在声明变量的等号右边直接赋值
+        - 第二种是在构造函数中赋值
+        - 第三种是在类的初始代码块中赋值(不常用)
+        - 如果不采用第一种方法,就必须在第2,3中挑选一种来赋值,不能不赋值
+    - final static variable(类中的static final属性)
+        - 第一种声明变量的右边直接赋值
+        - 第二种是在static初始代码块中复制,不能用普通初始代码块赋值
+    - final local variable(方法中的final变量)
+        - 要求在使用前赋值,和非final的变量是一样的
+2. final修饰方法
+    - 构造方法不允许被final修饰
+    - 被修饰的方法不能被override
+    - 额外提一点:static方法不能被重写,但是和final修饰不同的是,子类可以写同名的方法
+3. final修饰类
+    - 不可被继承,最典型的就是String
+## 不变性和final的关系
+1. 不变性并不意味着,简单的用final就是不可变
+    - 对于基本数据类型,确定被final修饰后就具有不变性
+        - 对于基本数据类型,确实被final修饰后就具备不变性
+        - 对于引用类型,要保证该对象自身被创建后,状态永远不会变才可以(比如一个Person类有三个属性,两个被final修饰,一个没有,那么就不满足)
+2. 如何利用final实现对象不可变
+    - 把所有属性都声明为final?`[×]`  
+    如果能往下一层一层有一个可变,那么即便声明为final也不是不可变的,比如Person类有三个属性,都是final修饰,但是有一个属性又是一个类,这个类中有可变的属性,那整体Person而言也还是可变的
+    - 一个属性是对象类型的不可变对象的正确实现
+        - [ImmutableDemo.java](src/main/java/com/lyming/lock/immutable/ImmutableDemo.java)
+        - 对象创建后,其状态就不能修改
+        - 所有属性都是final修饰的
+        - 对象创建过程中没有发生溢出
+3. 把变量写在线程内部--栈封闭
+    - 在方法中新建的局部变量,实际上是存储在每个线程私有的栈空间,不能被其他线程所访问到,这就是`栈封闭`技术,是`线程封闭`的一种情况
+    - 代码演示[StackConfinement.java](src/main/java/com/lyming/lock/immutable/StackConfinement.java)
