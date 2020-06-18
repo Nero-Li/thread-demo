@@ -874,5 +874,62 @@ public class CopyOnWriteArrayList<E>
     - 考虑边界
     - 考虑空间
     - 考虑吞吐量,比如LinkedBlockingQueue有两把锁,粒度较ArrayBlockingQueue细
-## 
-## 
+----
+# 九.控制并发流程
+## 什么是控制并发流程
+1. 控制并发流程的工具类,作用就是帮助程序员更容易的让线程之间进行合作
+2. 让线程之间相互配合,来满足业务逻辑
+3. 比如让线程A等待线程B执行完毕以后再执行等合作策略
+4. ![有哪些控制并发流程的工具类](src/main/resources/课程图片/有哪些控制并发流程的工具类？&#32;.png)
+## CountDownLatch倒计时门闩
+1. CountDownLatch类的作用
+    - 例子:购物拼团;过山车==>人满发车
+    - 流程:倒数结束之前,一直处于等待状态,直到倒计时结束了,此线程才继续过程
+    - CountDownLatch(int count):仅有一个构造函数,参数count为需要倒数的值
+    - await():调用await()方法的线程会被挂起,它会等待直到count的值为0才会继续执行
+    - countDown():将count减1,直到count为0,等待的线程才会被唤醒
+    - ![CountDownLatch1](src/main/resources/课程图片/CountDownLatch 1.png)
+2. CountDownLatch两种经典场景
+    - 用法1,一个线程等待多个线程都执行完毕,再继续自己的工作  
+    [CountDownLatchDemo1.java](src/main/java/com/lyming/flowcontrol/countdownlatch/CountDownLatchDemo1.java)
+    - 用法2,多个信号等待一个信号,同时开始执行  
+    [CountDownLatchDemo2.java](src/main/java/com/lyming/flowcontrol/countdownlatch/CountDownLatchDemo2.java)
+    - 结合用法1和用法2  
+    [CountDownLatchDemo1And2.java](src/main/java/com/lyming/flowcontrol/countdownlatch/CountDownLatchDemo1And2.java)
+    - 扩展用法:可以实现多等多
+    - 注意CountDownLatch不能重用,如果需要重新计数,考虑用CyclicBarrier或者重新创建CountDownLatch对象
+## Semaphore信号量
+1. Semaphore可以用来限制或者管理数量有限的资源的使用情况
+2. 信号量的作用是维护一个`许可证`的计数,线程可以`获取`许可证,那信号量剩余的许可证就减一,线程也可以`释放`一个许可证,那么信号量剩余的许可证就加一,
+当信号量所拥有的许可证数量为0,那么下一个还想要获取许可证的线程就需要等待,直到另外的线程释放许可证
+3. ![信号量1](src/main/resources/课程图片/信号量1.png)
+![信号量3](src/main/resources/课程图片/信号量3.png)
+![信号量4](src/main/resources/课程图片/信号量4.png)
+![信号量5](src/main/resources/课程图片/信号量5.png)
+![信号量6](src/main/resources/课程图片/信号量6.png)
+![信号量7](src/main/resources/课程图片/信号量7.png)
+![信号量8](src/main/resources/课程图片/信号量8.png)
+![信号量9](src/main/resources/课程图片/信号量9.png)
+![信号量10](src/main/resources/课程图片/信号量10.png)
+![信号量11](src/main/resources/课程图片/信号量11.png)
+![信号量12](src/main/resources/课程图片/信号量12.png)
+![信号量13](src/main/resources/课程图片/信号量13.png)
+4. 信号量使用流程
+    1. 初始化Semaphore并制定许可证的数量
+    2. 在需要被现在的代码加`acquire()`或者`acquireUninterruptibly()`
+    3. 任务结束后,调用`release()`释放许可证
+5. 主要方法介绍
+    - new Semaphore(int permits,boolean fair):这里可以设置使用公平策略,如果传入true,那么Semaphore会把之前等待的线程放到FIFO队列里,
+    以便当有了许可证,可以分发给之前等待时间最长的线程
+    - acquire():获取,能够响应中断
+    - acquireUninterruptibly():获取,不能响应中断,如果有异常,需要自己处理
+    - tryAcquire():和之前的TryLock很相似,看看有没有空闲的许可证,如果有就获取,没有也不阻塞,做别的事情,过一会儿再来查看许可证空闲情况
+    - tryAcquire(timeout):和tryAcquire()多了一个超时时间,比如超过三面没有获取到许可证,就去做别的事情
+    - release():归还许可证,如果不手动调用,程序是不会自动归还许可证的
+    - 代码示例[SemaphoreDemo.java](src/main/java/com/lyming/flowcontrol/semaphore/SemaphoreDemo.java)
+6. 注意点
+    - 获取和释放的许可证数量必须一致,否则比如每次获取两个,释放一个甚至不释放,随着时间的推移,程序会卡死,因为许可证数量不够用了
+    - 注意在初始化Semaphore的时候设置公平性,一般设置为公平,true比较好
+    - 并不是必须由获取许可证的线程释放那个许可证,事实上,获取和释放许可证对线程并无要求,也就是说A获取了,由B释放,只要逻辑合理即可
+## Condition接口
+## CyclicBarrier循环栅栏
