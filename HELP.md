@@ -787,6 +787,92 @@
     - 错误的使用会造成ConcurrentHashMap不是线程安全的
     - 代码示例:[组合操作并不保证线程安全](src/main/java/com/lyming/collections/concurrenthashmap/OptionsNotSafe.java)
 ## CopyOnWriteArrayList
+1. 诞生的原因
+    - jdk5引入,用来代替Vector和SynchronizedList就像ConcurrentHashMap代替SynchronizedMap的原因一样
+    - Vector和SynchronizedList的锁的粒度太大,并发效率相对比较低,而且迭代时无法编辑
+    - Copy-On-Write并发容器还包括CopyOnWriteArraySet,用来替代同步Set
+2. 适用的场景
+    - 读操作要尽可能的快,写操作慢一点也没关系
+    - 读多写少:黑白名单,每日更新;监听器,迭代操作远多于修改操作
+3. 读写规则
+    - 回顾读写锁(ReadWriteLock):读读共享,其他都互斥(写写,写读,读写都互斥)
+    - 读取是完全不加锁的,而且写入也不会阻塞读取操作,只有写和写需要同步等待
+4. 实现原理
+    - 如果要修改,拷贝一份再在新的一份里修改,最后再把指向原本的指针指向新的一份,之前那一份就会被回收
+    - 创建新副本,读写分离的思想
+    - '不可变'原理:以前的那一份在读的时候是完全并发安全的,因为写操作都在新副本中进行
+    - 迭代期间的数据可能是过期的,因为哪怕修改的,也是用最开始的那一份数据
+    - 代码见[CopyOnWriteArrayListDemo1](src/main/java/com/lyming/collections/copyonwrite/CopyOnWriteArrayListDemo1.java) [CopyOnWriteArrayListDemo2](src/main/java/com/lyming/collections/copyonwrite/CopyOnWriteArrayListDemo2.java)
+5. 缺点
+    - 数据一致性问题:CopyOnWrite容器只能保证数据最终一致性,不能保证数据的实时一致性,所以如果希望这种强一致性,不要用CopyOnWrite容器
+    - 内存占用问题: 因为CopyOnWrite的写实复制机制,所以在进行写操作的时候,内存中会同时驻扎两个对象的内存
+6. 源码分析
+```
+public class CopyOnWriteArrayList<E>
+    implements List<E>, RandomAccess, Cloneable, java.io.Serializable {
+    private static final long serialVersionUID = 8673264195747942595L;
+
+    /** 用的ReentrantLock*/
+    final transient ReentrantLock lock = new ReentrantLock();
+
+    /** The array, accessed only via getArray/setArray. */
+    private transient volatile Object[] array;
+```
 ## 并发队列Queue(阻塞队列,非阻塞队列)
+1. 为什么要使用队列
+    - 用队列可以在线程间传递数据:生产者消费者模式,银行转账
+    - 考虑锁等线程安全问题的重任从人转移到了队列上
+2. 并发队列的简介
+    - Queue:保存一组等待处理的数据,会有很多种实现,底层实现有一种是linkedList,但是对随机访问的需求,Queue根本不提供方法
+    - BlockingQueue:队列为空,取的操作会一直阻塞,队列满了,插入的操作为被阻塞
+3. 并发队列关系图
+    - ![阻塞队列和非阻塞队列](src/main/resources/课程图片/阻塞队列和非阻塞队列&#32;.png)
+    - 还有一种queue叫`deque`,双端都可以插入可删除
+4. 阻塞队列BlockingQueue
+    - 什么是阻塞队列
+        - 阻塞队列是具有阻塞功能的队列,所以首先它是一个队列,其次是具有阻塞功能
+        - 通常,阻塞队列的一段是给生产者放数据用,另一端给消费者拿数据用,阻塞队列是`线程安全`的,所以生产者和消费者都可以是多线程的  
+        ![什么是阻塞队列](src/main/resources/课程图片/什么是阻塞队列&#32;.png)
+    - 主要方法介绍
+        - take()方法:获取并移除队列的头结点,一旦执行take()的时候,队列里无数据,则阻塞,知道队列里有数据  
+        ![take](src/main/resources/课程图片/什么是阻塞队列&#32;2.png)
+        - put()方法:插入元素,如果队列已满,就无法继续插入,则阻塞知道队列里有空闲空间  
+        ![put](src/main/resources/课程图片/什么是阻塞队列&#32;3.png)  
+        - 是否有界(容量有多大):这是一个非常重要的属性,无界队列意味着里面可以容纳非常多(Integer.MAX_VALUE,约为2的31次,可以认为是无限容量)
+        - 阻塞队列和线程池的关系:阻塞队列是线程池的重要组成部分
+        - add(),remove(),element():  
+        add()和remove()与之前的take()和put()作用很相似,但是不会阻塞,而是直接抛出异常;  
+        element()会返回队列的头元素,如果没有,也会抛出异常
+        - offer(),poll(),peek():  
+        offer()添加元素,如果满了,会返回一个false  
+        poll()和peek()都会取一个元素,如果没取到就返回null,他们的区别是poll()取的同时会删除队列的元素
+    - ArrayBlockingQueue
+        - 有界,创建时要指定容量
+        - 公平:还可以指定是否需要保证公平,如果想保证公平,那么等待了最长时间的线程会先被处理,不过这样会带来一定的性能损耗
+        - 代码见[ArrayBlockingQueueDemo.java](src/main/java/com/lyming/collections/queue/ArrayBlockingQueueDemo.java)
+    - LinkedBlockingQueue
+        - 无界:Integer.Max_Value
+        - 内部结构:Node,两把锁
+    - PriorityBlockingQueue
+        - 支持优先级
+        - 自然排序(而不是先进先出,自己实现CompareTo方法)
+        - 无界队列
+        - 可以看做PriorityQueue的线程安全版本
+    - SynchronousQueue
+        - 它的容量为0
+        - 需要注意的是,SynchronousQueue的容量是0,而不是1,因为SynchronousQueue不需要持有元素,它所要做的就是直接传递(direct handoff)
+        - ![SynchronousQueue](src/main/resources/课程图片/SynchronousQueue.png)
+        - 注意点:SynchronousQueue没有peek()等函数,因为peek的作用是取出头结点,但是SynchronousQueue容量为0,所以peek对于SynchronousQueue没有意义,同样还有iterate相关方法
+        - SynchronousQueue是线程池Excutors.newCachedThreadPool()使用的阻塞队列
+    - DelayedQueue
+        - 延迟队列,根据延迟时间排序
+        - 元素需要实现Delayed接口,规定排序规则,无界的队列
+5. 非阻塞队列(使用场景比阻塞队列少得多)
+    - 并发包中的非阻塞队列只有ConcurrentLinkedQueue这一种,顾名思义,ConcurrentLinkedQueue是使用链表作为其数据结构的,使用CAS非阻塞算法来
+    实现线程安全(不具备阻塞功能),适用于对性能要求比较高的并发场景,用的相对较少
+6. 如何选择合适的队列
+    - 考虑边界
+    - 考虑空间
+    - 考虑吞吐量,比如LinkedBlockingQueue有两把锁,粒度较ArrayBlockingQueue细
 ## 
 ## 
