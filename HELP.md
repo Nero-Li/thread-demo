@@ -959,7 +959,7 @@ public class CopyOnWriteArrayList<E>
     事件,而CyclicBarrier作用于线程
     - 可重用不同,CountDownLatch在倒数到0并触发门闩打开后,就不能再次使用了,除非新建新的实例对象;而CyclicBarrier可以重复使用
 ----
-# AQS(AbstractQueuedSynchronizer)
+# 十.AQS(AbstractQueuedSynchronizer)
 ## 为什么需要AQS
 1. 锁和协作类有共同点:闸门,比如ReentrantLock和Semaphore
 2. 事实上,不仅是ReentrantLock和Semaphore,包括CountDownLatch,ReentrantReadWriteLock都有类似的'协作'功能(或者叫'同步')功能,其实他们
@@ -1220,3 +1220,37 @@ Semaphore内部有一个Sync类,Sync类继承了AQS,同样的还有CountDownLatc
 ## 利用AQS实现一个自己的Latch门闩,流程控制
 - [OneShotLatch.java](src/main/java/com/lyming/aqs/OneShotLatch.java)
 ----
+# 十一.Future和Callable
+## Runnable的缺陷
+1. 不能返回一个返回值
+2. 不能抛出一个Checked Exception,只能在try-catch中捕获[RunnableCantThrowsException.java](src/main/java/com/lyming/future/RunnableCantThrowsException.java)
+## Callable接口
+1. 类似于Runnable,被其他线程执行的任务
+2. 实现call方法
+3. 有返回值
+## Future类(重点)
+1. 作用  
+    遇到一个耗时的方法,让一个子线程去执行,然后子线程计算出的结果返回给Future
+2. Future和Callable的关系
+    - 可以用Future.get()来获取Callable接口返回的执行结果,还可以通过Future.isDone()来判断任务是否已经执行完毕,还可以取消这个任务,限时获取
+    任务的结果等
+    - 在call()未执行完毕之前,调用get()的线程会被阻塞,知道call()方法返回了结果后,future.get()才会得到结果,然后调用get()的线程才会切换到Runnable状态
+    - 所以Future是一个存储器,它存储了call()这个任务的结果,而这个任务的执行时间是无法提前确定的,因为这完全取决于call()方法执行的情况,所以Future和
+    call()是相互配合的关系
+3. 主要方法
+    1. get():获取结果  
+    get方法的行为取决于Callable任务的状态,只有以下5种情况:
+        - 任务正常完成:get方法会立刻返回结果
+        - 任务尚未完成(任务还没开始或者还在进行中):get将阻塞并直到任务完成
+        - 任务在执行的过程中抛出Exception:get方法会抛出`ExecutionException`,这里抛出的异常,是call()执行时产生的异常,看到这个异常的类型是
+        java.util.concurrent.ExecutionException.不论call()执行时抛出的异常类型是什么,最后get()方法抛出的异常类型都是ExecutionException
+        - 任务被取消:get()方法会抛出`CancellationException`
+        - 任务超时:get()方法有一个重写方法,是传入一个延迟时间的,如果时间到了还没有获取结果,get()方法就会抛出`TimeoutException`
+    2. cancel():取消任务的执行,在后面代码中演示,怎么取消也是分情况的
+    3. isDone():判断线程是否执行完毕
+    4. isCancelled():判断任务是否被取消
+## 用法一.线程池的submit方法返回Future对象,代码演示
+![线程池的submit方法返回Future对象](src/main/resources/课程图片/线程池的submit方法返回Future对象.png)
+1. 首先我们要给线程池提交我们的任务,提交时线程池会立刻返回
+## 用法二.用FutureTask来创建Future
+## Future注意点
