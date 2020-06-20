@@ -888,7 +888,7 @@ public class CopyOnWriteArrayList<E>
     - CountDownLatch(int count):仅有一个构造函数,参数count为需要倒数的值
     - await():调用await()方法的线程会被挂起,它会等待直到count的值为0才会继续执行
     - countDown():将count减1,直到count为0,等待的线程才会被唤醒
-    - ![CountDownLatch1](src/main/resources/课程图片/CountDownLatch 1.png)
+    - ![CountDownLatch1](src/main/resources/课程图片/CountDownLatch&#32;1.png)
 2. CountDownLatch两种经典场景
     - 用法1,一个线程等待多个线程都执行完毕,再继续自己的工作  
     [CountDownLatchDemo1.java](src/main/java/com/lyming/flowcontrol/countdownlatch/CountDownLatchDemo1.java)
@@ -933,5 +933,290 @@ public class CopyOnWriteArrayList<E>
     - 并不是必须由获取许可证的线程释放那个许可证,事实上,获取和释放许可证对线程并无要求,也就是说A获取了,由B释放,只要逻辑合理即可
     - 信号量的作用,除了控制临界区最多同时有N个线程访问外,另一个作用是可以实现"条件等待",例如线程1需要在线程2完成准备工作后再开始工作,那么就线程1
     acquire(),而线程2完成任务后release(),相当于轻量级的`CountDownLatch`
-## Condition接口
+## Condition接口(又称为条件对象)
+1. 作用
+    - 当线程1需要等待某个条件时,它就去执行`condition.await()`方法,一旦执行了await(),线程就进入阻塞状态
+    - 然后通常会有另外一个线程,假设是线程2,去执行对应的条件,直到这个条件达到的时候,线程2就会去执行`condition.signal()`方法,这个时候
+    JVM就会从被阻塞的线程里面找,找到那些等待该condition的线程,当线程1就会收到可执行信号的时候,它的线程状态就会变成Runnable可执行状态
+    - ![Condition作用](src/main/resources/课程图片/Condition作用&#32;.png)
+    - 除了`signal()`还有`signalAll()`,signal()是公平的,会唤醒等待时间最长的那个线程,signalAll()会将等待的所有线程都唤醒
+2. 代码演示
+    - 普通示例[ConditionDemo1.java](src/main/java/com/lyming/flowcontrol/condition/ConditionDemo1.java)
+    - 用Condition实现生产者消费者模式[ConditionDemo2.java](src/main/java/com/lyming/flowcontrol/condition/ConditionDemo2.java)
+3. 注意点
+    - 实际上,如果说Lock用来代替Synchronized,那么Condition就是用来代替相对应的Object.wait()/notify()
+    的所以在用法和性质上,几乎都一样
+    - await()方法会自动释放已经持有的Lock锁,和Object.wait()一样,不需要手动先释放锁
+    - 调用await()之前需要已经持有锁,否则会抛出异常,和Object.wait()一样
 ## CyclicBarrier循环栅栏
+1. 作用
+    - CyclicBarrier循环栅栏和CountDownLatch很类似,都能阻塞一组队列
+    - 当有大量线程相互配合,分别计算不同人物,并且需要最后统一汇总的时候,我们可以使用CyclicBarrier.CyclicBarrier可以构造一个集结点,当某一个线程
+    执行完毕,它就会到集结点等待,直到所有线程都到集结点,那么该栅栏就会被撤销,所有线程统一出发,继续执行下面的任务
+    - 代码示例[CyclicBarrierDemo.java](src/main/java/com/lyming/flowcontrol/cyclicbarrier/CyclicBarrierDemo.java)
+2. CyclicBarrier和CountDownLatch的区别
+    - 作用不同:CyclicBarrier要等固定数量的线程都到达了栅栏位置才能继续执行,而CountDownLatch只需要等待数字到0,也就是说CountDownLatch作用于
+    事件,而CyclicBarrier作用于线程
+    - 可重用不同,CountDownLatch在倒数到0并触发门闩打开后,就不能再次使用了,除非新建新的实例对象;而CyclicBarrier可以重复使用
+----
+# AQS(AbstractQueuedSynchronizer)
+## 为什么需要AQS
+1. 锁和协作类有共同点:闸门,比如ReentrantLock和Semaphore
+2. 事实上,不仅是ReentrantLock和Semaphore,包括CountDownLatch,ReentrantReadWriteLock都有类似的'协作'功能(或者叫'同步')功能,其实他们
+底层都用了一个共同的基类,这就是AQS
+3. 因为上面的协作类,它们有很多工作都是类似的,所以如果能提取一个工具类,那么就可以直接用,对于ReentrantLock和Semaphore而言就可以屏蔽很多细节,只关注他们
+自己的业务逻辑就可以了
+4. Semaphore和AQS的关系![AQS1](src/main/resources/课程图片/AQS&#32;1.png)
+Semaphore内部有一个Sync类,Sync类继承了AQS,同样的还有CountDownLatch,ReentrantLock都有一个Sync内部类,都继承了AbstractQueuedSynchronizer(AQS)
+5. AQS的比喻
+    - 面试:群面,单面
+    - 找面试者,安排就坐,叫号,先来后到等HR的工作就是AQS的工作,但是群面多少人一起面试,什么时间,单面什么时间,是面试官(ReentrantLock,CountDownLatch)决定
+    - 面试官不会关心两个面试者是不是号码冲突了,也不去管面试者是否需要一个地方休息,因为这些都是HR(AQS)的工作
+## AQS的作用
+1. 如果没有AQS
+    - 同步状态的原子性管理
+    - 线程的阻塞与解除阻塞
+    - 队列的管理
+2. AQS是一个用于构建锁,同步器,协作工具类的工具类(框架),有了AQS,更多的协作工具类都可以很方便的被写出来  
+有了AQS,构建线程协作类就容易多了
+## AQS的重要性,地位
+1. AbstractQueuedSynchronizer是Doug Lea写的,从JDK1.5加入的一个基于FIFO等待队列实现的一个用于实现同步器的基础框架
+2. AQS的实现类(JDK8中):![AQS2](src/main/resources/课程图片/AQS&#32;2png.png)
+## AQS内部原理解析
+1. AQS最核心的三大部分
+    1. state  
+    这里state的具体含义,会根据具体的实现类的不同而不同,比如在Semaphore中,它表示剩余的许可证的数量,而在CountDownLatch中,它表示还需要倒数的数量  
+    state是volatile修饰的,会被并发的修改,所以所有修改state的方法都要保证线程安全,比如getState(),setState(),CompareAndSetState()操作来读取
+    和更新这个状态,这些方法都依赖于j.u.c.atomic包的支持  
+    在ReentrantLock中,state表示锁的占有情况,包括可重入计数,当state=0,表示该lock不被任何线程占有
+    2. 控制线程抢锁的配合的FIFO队列  
+    这个队列用来存放等待的线程,AQS就是排队管理器,当多个线程用同一把锁的时候,,必须有排队机制将那些没能拿到锁的线程串在一起,当锁释放时,锁
+    管理器就会挑选一个合适的线程来占有这个刚刚释放的锁  
+    AQS会维护一个等待的线程队列,把线程都放在这个队列里
+    ![AQS3](src/main/resources/课程图片/AQS&#32;3.png)
+    3. 期望协作工具类去实现的获取/释放等重要方法  
+    是利用AQS的协作工具类里最终要的方法,是由协作类自己去实现,并且含义各不相同
+    - 获取方法  
+    依赖state变量,经常会阻塞,比如获取不到锁的时候  
+    在Semaphore,获取就是acquire()方法,作用是获取一个许可证  
+    而在CountDownLatch中,获取就是await()方法,作用是等待,直到倒数结束
+    - 释放方法  
+    不会阻塞  
+    在Semaphore中,释放就是release()方法,作用是释放一个许可证  
+    在CountDownLatch中,获取就是countDown()方法,作用是倒数一个数
+    - 除此之外,各个线程协作类还需要重写tryAcquire*()和tryRelease*()方法
+## 应用实例,源码解析
+1. AQS用法
+    1. 写一个类,想好协作的逻辑,实现获取/释放方法
+    2. 内部写一个Sync继承AbstractQueuedSynchronizer类
+    3. 根据是否独占/共享来重写tryAcquire()/tryRelease()或者tryAcquireShared(int acquires)和tryReleaseShared(int released)等方法,在
+    之前写的获取/释放方法中调用AQS的acquire()/release()或者shared()方法
+2. AQS在CountDownLatch中的用法
+    - 内部类Sync继承AQS![CountDownLatch源码分析](src/main/resources/课程图片/CountDownLatch源码分析&#32;.png)
+    - 构造函数  
+    ```java
+        public CountDownLatch(int count) {
+            if (count < 0) throw new IllegalArgumentException("count < 0");
+            this.sync = new Sync(count);
+        }
+        //==>Sync方法
+        private static final class Sync extends AbstractQueuedSynchronizer {
+            private static final long serialVersionUID = 4982264981922014374L;
+    
+            Sync(int count) {
+                setState(count);
+            }
+        //...
+        }
+        //==>setState方法
+        protected final void setState(int newState) {
+            state = newState;
+        }
+    ```
+    - getCount()
+    ```java
+       public long getCount() {
+            return sync.getCount();
+       }
+       //==>getCount()
+       private static final class Sync extends AbstractQueuedSynchronizer {
+            private static final long serialVersionUID = 4982264981922014374L;
+    
+          //...
+    
+            int getCount() {
+                return getState();
+            }
+           //...
+       }
+       //==>getState()
+       protected final int getState() {
+           return state;
+       }
+    ```
+    - countDown()
+    ```java
+        public void countDown() {
+            sync.releaseShared(1);
+        }
+       //==>releaseShared(1)
+       public final boolean releaseShared(int arg) {
+           if (tryReleaseShared(arg)) {
+               doReleaseShared();//唤醒其他线程
+               return true;
+           }
+           return false;
+       }
+       //==>tryReleaseShared()在CountDownLatch中的实现
+       protected boolean tryReleaseShared(int releases) {
+           // 自旋
+           for (;;) {
+               int c = getState();
+               if (c == 0)
+                   return false;
+               int nextc = c-1;
+               if (compareAndSetState(c, nextc))//cas更新
+                   return nextc == 0;//如果nextc==0,返回true很关键
+           }
+       }
+    ```
+    - await()
+    ```java
+        public void await() throws InterruptedException {
+            sync.acquireSharedInterruptibly(1);
+        }
+       //==>acquireSharedInterruptibly(1)
+        public final void acquireSharedInterruptibly(int arg)
+                throws InterruptedException {
+            if (Thread.interrupted())
+                throw new InterruptedException();
+            if (tryAcquireShared(arg) < 0)
+                doAcquireSharedInterruptibly(arg);//把当前线程包装成node节点并阻塞
+        }
+       //==>tryAcquireShared()在CountDownLatch中的实现
+       protected int tryAcquireShared(int acquires) {
+           return (getState() == 0) ? 1 : -1;
+       }
+    ```
+3. AQS在Semaphore中的用法
+    - Semaphore中,state表示许可证的剩余数量
+    - acquire()
+    ```java
+        public void acquire(int permits) throws InterruptedException {
+            if (permits < 0) throw new IllegalArgumentException();
+            sync.acquireSharedInterruptibly(permits);
+        }
+    //==>acquireSharedInterruptibly()
+        public final void acquireSharedInterruptibly(int arg)
+                throws InterruptedException {
+            if (Thread.interrupted())
+                throw new InterruptedException();
+            if (tryAcquireShared(arg) < 0)
+                doAcquireSharedInterruptibly(arg);//当前线程排队等待
+        }
+    //==>tryAcquireShared()在Semaphore()中非公平的情况
+       protected int tryAcquireShared(int acquires) {
+           return nonfairTryAcquireShared(acquires);
+       }
+    //==>nonfairTryAcquireShared()非公平方法
+       final int nonfairTryAcquireShared(int acquires) {
+           for (;;) {//自旋
+               int available = getState();//获取可用的许可证数量
+               int remaining = available - acquires;//acquire将要获取许可证数量可以>1
+               if (remaining < 0 ||
+                   compareAndSetState(available, remaining))
+                   return remaining;//返回值数量不重要,重要的是正负,正:成功,线程不等待
+           }
+       }
+    //==>tryAcquireShared()在Semaphore()中公平的情况
+       protected int tryAcquireShared(int acquires) {
+           for (;;) {
+               if (hasQueuedPredecessors())
+                   return -1;//查询当前线程是不是排队时间最长的,如果不是就要继续排队,不能获取许可证
+               int available = getState();
+               int remaining = available - acquires;
+               if (remaining < 0 ||
+                   compareAndSetState(available, remaining))
+                   return remaining;
+           }
+       }
+    ```
+4. AQS在ReentrantLock中的用法
+    - unlock()解锁
+    ```java
+         public void unlock() {
+             sync.release(1);
+         }
+    //==>AQS的release()
+        public final boolean release(int arg) {
+            if (tryRelease(arg)) {
+                Node h = head;
+                if (h != null && h.waitStatus != 0)
+                    unparkSuccessor(h);//唤醒其他等待的线程
+                return true;
+            }
+            return false;
+        }
+    //==>ReentrantLock中的tryRelease()
+        protected final boolean tryRelease(int releases) {
+            int c = getState() - releases;//state的值就是已经重入的次数,releases默认是1
+            if (Thread.currentThread() != getExclusiveOwnerThread())//判断当前线程是否是持有锁的线程
+                throw new IllegalMonitorStateException();
+            boolean free = false;
+            if (c == 0) {//只有重入次数为0,才会释放锁
+                free = true;
+                setExclusiveOwnerThread(null);//设置持有当前锁的线程为null
+            }
+            setState(c);
+            return free;
+        }
+    ```
+   - lock()加锁
+   ```java
+        public void lock() {
+            sync.lock();
+        }
+   //Sync的lock()是个interface,因为要区分公平不公平
+        abstract void lock();
+   //==>NonfairSync的lock(),非公平的实现
+       final void lock() {
+           if (compareAndSetState(0, 1))//expect为0,也就是只有当前锁没有被其他线程持有才进if
+               setExclusiveOwnerThread(Thread.currentThread());//当前线程持有锁,互斥的
+           else
+               acquire(1);//否则进入这里
+       }
+   //==>acquire()
+       public final void acquire(int arg) {
+           if (!tryAcquire(arg) &&  //核心就是tryAcquire()
+               //下面的如果返回false就调用addWaiter(),就是添加到等待队列中
+               //acquireQueued()就是在有机会的时候就尝试获取锁,否则等待
+               acquireQueued(addWaiter(Node.EXCLUSIVE), arg)) 
+               selfInterrupt();
+       }
+   //tryAcquire()也是接口,分为公平非公平,这里进非公平的实现NonfairSync.tryAcquire()
+       protected final boolean tryAcquire(int acquires) {
+           return nonfairTryAcquire(acquires);
+       }
+   //==>nonfairTryAcquire(int acquires)
+       final boolean nonfairTryAcquire(int acquires) {
+           final Thread current = Thread.currentThread();
+           int c = getState();
+           if (c == 0) { //判断当前锁是不是被持有
+               if (compareAndSetState(0, acquires)) {
+                   setExclusiveOwnerThread(current);//没有被持有就让当前线程持有
+                   return true;
+               }
+           }
+           else if (current == getExclusiveOwnerThread()) { //如果当前锁被持有,但是恰好是当前线程持有
+               int nextc = c + acquires; //重入次数加一,因为acquires通常是1
+               if (nextc < 0) // overflow,发生溢出,通常不存在
+                   throw new Error("Maximum lock count exceeded");
+               setState(nextc);
+               return true;
+           }
+           return false;//当前锁被其他线程持有,返回false
+       }
+    ```
+## 利用AQS实现一个自己的Latch门闩,流程控制
+- [OneShotLatch.java](src/main/java/com/lyming/aqs/OneShotLatch.java)
+----
