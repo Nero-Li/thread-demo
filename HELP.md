@@ -676,7 +676,8 @@
                     Node<K,V> f; int n, i, fh;
                     if (tab == null || (n = tab.length) == 0)//判断tab是否为空或者没有值,tab就是一个node节点
                         tab = initTable();//初始化tab
-                    else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {//如果已经初始化过了,而且计算出来的hash节点没有被占用
+                    //如果已经初始化过了,而且计算出来的hash节点没有被占用
+                    else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
                         if (casTabAt(tab, i, null,//就用cas操作放进去,是利用Unsafe的操作
                                      new Node<K,V>(hash, key, value, null)))
                             break;//成功放进去,就退出for循环
@@ -746,7 +747,8 @@
                 if ((tab = table) != null && (n = tab.length) > 0 &&//tab不能为null且长度要大于0
                     (e = tabAt(tab, (n - 1) & h)) != null) {
                     if ((eh = e.hash) == h) {
-                        if ((ek = e.key) == key || (ek != null && key.equals(ek)))//槽点的hash值符合,key符合,说明找到了value
+                        //槽点的hash值符合,key符合,说明找到了value
+                        if ((ek = e.key) == key || (ek != null && key.equals(ek)))
                             return e.val;
                     }
                     else if (eh < 0)//如果hash值为负数,说明是红黑树节点或者是转义节点

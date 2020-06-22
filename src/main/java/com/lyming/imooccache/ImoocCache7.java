@@ -55,6 +55,7 @@ public class ImoocCache7<A, V> implements Computable<A, V> {
                 }
             }
         }).start();
+        Thread.sleep(50);
         new Thread(new Runnable() {
             @Override
             public void run() {

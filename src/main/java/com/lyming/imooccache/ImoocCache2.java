@@ -35,7 +35,7 @@ public class ImoocCache2<A,V> implements Computable<A,V> {
                 new ExpensiveFunction());
         Integer result = expensiveComputer.compute("666");
         System.out.println("第一次计算结果："+result);
-        result = expensiveComputer.compute("13");
+        result = expensiveComputer.compute("666");
         System.out.println("第二次计算结果："+result);
     }
 }

@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 描述：     缩小了synchronized的粒度，提高性能，但是依然并发不安全
+ * 描述：
  */
 public class ImoocCache6<A, V> implements Computable<A, V> {
 
