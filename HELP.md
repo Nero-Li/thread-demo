@@ -1273,3 +1273,6 @@ Runnable被线程执行,又可以作为Future得到Callable的返回值
 1. 用for循环批量获取Future的结果时,容易发生一部分线程很慢的情况,get()方法调用时应该用timeout限制,防止阻塞
 2. Future的生命周期不能后退
     - 生命周期只能前进,不能后退,就和线程池的生命周期一样,一旦完全了任务,它就永久停止在了已完成的状态,不能重头再来
+----
+# 十二.打造高项目缓存
+[见imooccache包](src/main/java/com/lyming/imooccache/ImoocCache1.java)
