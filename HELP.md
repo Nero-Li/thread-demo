@@ -1251,6 +1251,25 @@ Semaphore内部有一个Sync类,Sync类继承了AQS,同样的还有CountDownLatc
     4. isCancelled():判断任务是否被取消
 ## 用法一.线程池的submit方法返回Future对象,代码演示
 ![线程池的submit方法返回Future对象](src/main/resources/课程图片/线程池的submit方法返回Future对象.png)
-1. 首先我们要给线程池提交我们的任务,提交时线程池会立刻返回
+1. 首先我们要给线程池提交我们的任务,提交时线程池会立刻返回一个空的Future容器,当线程的任务一旦执行完毕,也就是当可以获取到一个结果时,线程池便会把
+该结果填入到之前那个Future中,而不是新建一个新的Future,此时便可以从该Future中获得任务执行的结果
+    - get基本用法[OneFuture.java](src/main/java/com/lyming/future/OneFuture.java)
+    - Callable的Lambda表达式形式[OneFutureLambda.java](src/main/java/com/lyming/future/OneFutureLambda.java)
+    - 多个任务,用Future数组来获取结果[MultiFutures.java](src/main/java/com/lyming/future/MultiFutures.java)
+    - 任务执行过程中抛出Exception和isDone()演示[GetException.java](src/main/java/com/lyming/future/GetException.java)
+    - 获取任务超时和cancel()[Timeout.java](src/main/java/com/lyming/future/Timeout.java)
+2. cancel()方法:取消任务的执行
+    1. 如果这个任务还没有开始执行,那么这种情况最简单,任务会被正常的取消,未来也不会被执行,方法返回true
+    2. 如果任务已经完成或者已经取消,那么cancel()方法会执行失败,返回false
+    3. 如果这个任务已经开始执行了,那么这个取消方法将不会直接取消该任务,而是会根据我们填的参数mayInterruptIfRunning做判断:
+        - 传入true,会给任务一个中断信号,适用于知道任务能够处理interrupt
+        - 传入false,没什么影响,不会中断,意义在于对那些没有执行的任务在未来不会被执行
 ## 用法二.用FutureTask来创建Future
+1. FutureTask可以获取Future和任务的结果,同时它也是一种巴包装器,可以吧Callable转换成Future和Runnable,它同时实现二者的接口,所以它既可以作为
+Runnable被线程执行,又可以作为Future得到Callable的返回值
+2. 把Callable实例当做参数生成FutureTask对象,然后把这个对象作为一个Runnable对象,用线程池或者另起线程去执行这个Runnable对象,最后通过FutureTask
+获取刚才执行的结果[FutureTaskDemo.java](src/main/java/com/lyming/future/FutureTaskDemo.java)
 ## Future注意点
+1. 用for循环批量获取Future的结果时,容易发生一部分线程很慢的情况,get()方法调用时应该用timeout限制,防止阻塞
+2. Future的生命周期不能后退
+    - 生命周期只能前进,不能后退,就和线程池的生命周期一样,一旦完全了任务,它就永久停止在了已完成的状态,不能重头再来
